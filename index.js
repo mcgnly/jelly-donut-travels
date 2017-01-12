@@ -4,6 +4,8 @@ var http = require('http');
 var request = require('request');
 
 
+
+
 function cachedPricesUrl(body) {
     return ('http://partners.api.skyscanner.net/apiservices/browseroutes/v1.0/' 
     + body.market + '/' 
@@ -22,7 +24,7 @@ function locationServiceUrl(body, id) {
     + body.currency + '/' 
     + body.locale 
     +'/?id=' + id
-    + '-Iata&apiKey=' + SkyscannerApiKey);
+    + '-Sky48&apiKey=' + SkyscannerApiKey);
 } 
 
 
@@ -55,16 +57,15 @@ function cachedFlightsCallback(error, response, body) {
     if (!error && response.statusCode == 200) {
         var info = JSON.parse(body);
         let bestFlight = info.Quotes[0];
-        console.log('the best flight found was: ', bestFlight);
+        console.log('the best flight price found was: ', bestFlight.MinPrice, 'EUR, from ', bestFlight.OutboundLeg.DepartureDate, ' to ', bestFlight.InboundLeg.DepartureDate);
 
-        console.log('looking for the location at: ', locationOptions(reqBody, bestFlight.OutboundLeg.DestinationId))
         request.get(locationOptions(reqBody, bestFlight.OutboundLeg.DestinationId), locationCallback);
     }
 
 }
 
 function locationCallback(error, response, body) {
-    console.log("status code is", response.statusCode) // 200 
+    // console.log("status code is", response.statusCode) // 200 
     if (response.statusCode !=200) {
         console.log('response is: ', response.body)
     }
@@ -72,7 +73,7 @@ function locationCallback(error, response, body) {
     if (!error && response.statusCode == 200) {
         var info = JSON.parse(body);
         
-        console.log('the location of the destination was: ', info);
+        console.log('the location of the destination was: ', info.Places[0].PlaceName, info.Places[0].CountryName);
 
     }
 
