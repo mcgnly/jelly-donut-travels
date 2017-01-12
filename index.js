@@ -4,59 +4,90 @@ var http = require('http');
 var request = require('request');
 
 
-let sessionURL = 'http://partners.api.skyscanner.net/apiservices/pricing/v1.0';
+function cachedPricesUrl(body) {
+    return ('http://partners.api.skyscanner.net/apiservices/browseroutes/v1.0/' 
+    + body.market + '/' 
+    + body.currency + '/' 
+    + body.locale + '/' 
+    + body.originPlace + '/'
+    + body.destinationPlace + '/' 
+    + body.outboundPartialDate + '/' 
+    + body.inboundPartialDate 
+    + '?apiKey=' + SkyscannerApiKey);
+} 
+
+function locationServiceUrl(body, id) {
+    return ('http://partners.api.skyscanner.net/apiservices/autosuggest/v1.0/' 
+    + body.market + '/' 
+    + body.currency + '/' 
+    + body.locale 
+    +'/?id=' + id
+    + '-Iata&apiKey=' + SkyscannerApiKey);
+} 
 
 
-// HTTP Content-Type header: ‘application/x-www-form-urlencoded’.
 // HTTP Accept header: ‘application/json’ or ‘application/xml’.
-var options = {
-  url: sessionURL,
-  headers: {
-    'Content-Type': 'application/x-www-form-urlencoded',
-    'Accept': 'application/json'    
-  }
+function flightOptions(body) {
+    return {
+        url: cachedPricesUrl(body),
+        headers: {
+        'Accept': 'application/json'    
+        }
+    }
 };
 
-let defaults = {
-                country: "GB",
-                currency: "GBP",
-                locale: "en-GB",
-                locationSchema: "Iata",
-                apiKey: SkyscannerApiKey
-            };
+function locationOptions(body, id) {
+    return {
+        url: locationServiceUrl(body, id),
+        headers: {
+        'Accept': 'application/json'    
+        }
+    }
+};
 
 
-function callback(error, response, body) {
+function cachedFlightsCallback(error, response, body) {
     console.log("status code is", response.statusCode) // 200 
+    if (response.statusCode !=200) {
+        console.log('response is: ', response.body)
+    }
+
     if (!error && response.statusCode == 200) {
         var info = JSON.parse(body);
-        console.log(info);
-  }
+        let bestFlight = info.Quotes[0];
+        console.log('the best flight found was: ', bestFlight);
+
+        console.log('looking for the location at: ', locationOptions(reqBody, bestFlight.OutboundLeg.DestinationId))
+        request.get(locationOptions(reqBody, bestFlight.OutboundLeg.DestinationId), locationCallback);
+    }
+
 }
 
-    // console.log("----getting the session");
-    // http.get(sessionURL, function(res){
-    //     var body = '';
-    //     res.on('data', function(data){
-    //         body += data;
-    //     });
+function locationCallback(error, response, body) {
+    console.log("status code is", response.statusCode) // 200 
+    if (response.statusCode !=200) {
+        console.log('response is: ', response.body)
+    }
 
-    //     res.on('end', function(){
-    //         // var result = JSON.parse(body);
-    //         callback(body);
-    //     });
+    if (!error && response.statusCode == 200) {
+        var info = JSON.parse(body);
+        
+        console.log('the location of the destination was: ', info);
 
-    // }).on('error', function(e){
-    //     console.log('Error: ' + e);
-    // });
+    }
 
-request.post(options, callback).form(defaults)
+}
 
-// this.emit(':tell', 
-//     getCatFacts(function(data){
-//         getLocation(data, function(res){
-//             console.log("inside the second fn call. Location is: ", res);
-//             return res;
-//         });
-//     })
-// );
+
+// GB/GBP/en-GB/UK/anywhere/anytime/anytime?apiKey=prtl6749387986743898559646983194
+let reqBody = {
+    market:'DE',
+    currency:'EUR',
+    locale:'en-GB',
+    originPlace:'BER',
+    destinationPlace:'TH',
+    outboundPartialDate:'2017-02',
+    inboundPartialDate:'2017-02'
+}
+request.get(flightOptions(reqBody), cachedFlightsCallback);
+
